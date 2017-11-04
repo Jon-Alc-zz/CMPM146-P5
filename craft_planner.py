@@ -15,14 +15,14 @@ class State(OrderedDict):
         Use of this state representation is optional, should you prefer another.
     """
 
-    def __key__(self):
+    def __key(self):
         return tuple(self.items())
 
     def __hash__(self):
-        return hash(self.__key__())
+        return hash(self.__key())
 
     def __lt__(self, other):
-        return self.__key() < other.__key__()
+        return self.__key() < other.__key()
 
     def copy(self):
         new_state = State()
@@ -41,14 +41,6 @@ def make_checker(rule):
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
-        print(state)
-        if 'Consumes' in state.keys():
-            print('here')
-            print(state['Consumes'])
-        if 'Requires' in state.keys():
-            print('there')
-            print(state['Requires'])
-        
         return True
 
     return check
@@ -62,10 +54,8 @@ def make_effector(rule):
     def effect(state):
         # This code is called by graph(state) and runs millions of times
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
-        # Crafting['Initial'][item] = Crafting['Initial'][item] - quantity
         next_state = None
         return next_state
-
 
     return effect
 
@@ -113,6 +103,7 @@ def search(graph, state, is_goal, limit, heuristic):
 if __name__ == '__main__':
     with open('Crafting.json') as f:
         Crafting = json.load(f)
+
     # # List of items that can be in your inventory:
     # print('All items:', Crafting['Items'])
     #
@@ -137,13 +128,8 @@ if __name__ == '__main__':
     is_goal = make_goal_checker(Crafting['Goal'])
 
     # Initialize first state from initial inventory
-    state = State({key: 0 for key in Crafting['Items']}) # initialize values to 0
+    state = State({key: 0 for key in Crafting['Items']})
     state.update(Crafting['Initial'])
-    checker(Crafting['Recipes']['punch for wood'])
-    checker(Crafting['Recipes']['craft wooden_pickaxe at bench'])
-    # print(state.__key__)
-    # state["bench"] += 1
-    # print(state.__key__)
 
     # Search for a solution
     resulting_plan = search(graph, state, is_goal, 5, heuristic)
