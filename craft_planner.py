@@ -15,14 +15,14 @@ class State(OrderedDict):
         Use of this state representation is optional, should you prefer another.
     """
 
-    def __key(self):
+    def __key__(self):
         return tuple(self.items())
 
     def __hash__(self):
-        return hash(self.__key())
+        return hash(self.__key__())
 
     def __lt__(self, other):
-        return self.__key() < other.__key()
+        return self.__key__() < other.__key__()
 
     def copy(self):
         new_state = State()
@@ -41,6 +41,33 @@ def make_checker(rule):
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
+
+        consumeFailed = False
+        requireFailed = False
+
+        if 'Consumes' in rule: # if current rule consumes something
+            for ruleItem in rule['Consumes']: # for each item being consumed
+                for stateItem in state.__key__():
+                    if stateItem[0] == ruleItem: # check if the items match
+                        if stateItem[1] >= rule['Consumes'][ruleItem]: # check if we have enough
+                            temp = stateItem[1]
+                            stateItem = (stateItem[0], temp - rule['Consumes'][ruleItem])
+                        else:
+                            consumeFailed = True
+                            break
+                if consumeFailed:
+                    return False
+
+        if 'Requires' in rule: # if current rule requires something
+            for ruleItem in rule['Requires']: # for each item is required
+                for stateItem in state.__key__():
+                    if stateItem[0] == ruleItem:
+                        if stateItem[1] <= 1:
+                            requireFailed = True
+                            break
+            if requireFailed:
+                return False
+
         return True
 
     return check
@@ -54,8 +81,22 @@ def make_effector(rule):
     def effect(state):
         # This code is called by graph(state) and runs millions of times
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
-        next_state = None
+        if 'Consumes' in rule: # if current rule consumes something
+            for ruleItem in rule['Consumes']: # for each item being consumed
+                for stateItem in state.__key__():
+                    if stateItem[0] == ruleItem: # check if the items match
+                        temp = stateItem[1]
+                        stateItem = (stateItem[0], temp - rule['Consumes'][ruleItem])
+        
+        for ruleItem in rule['Produces']: # for each item being produced
+            for stateItem in state.__key__():
+                if stateItem[0] == ruleItem:
+                    temp = stateItem[1]
+                    stateItem = (stateItem[0], temp + rule['Produces'][ruleItem])
+
+        next_state = state.copy()
         return next_state
+
 
     return effect
 
@@ -66,6 +107,10 @@ def make_goal_checker(goal):
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
+        for item in Crafting["Goal"]:
+            if item in state.__key__():
+                return True
+
         return False
 
     return is_goal
@@ -75,6 +120,7 @@ def graph(state):
     # Iterates through all recipes/rules, checking which are valid in the given state.
     # If a rule is valid, it returns the rule's name, the resulting state after application
     # to the given state, and the cost for the rule.
+
     for r in all_recipes:
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
@@ -93,7 +139,7 @@ def search(graph, state, is_goal, limit, heuristic):
     # representing the path. Each element (tuple) of the list represents a state
     # in the path and the action that took you to this state
     while time() - start_time < limit:
-        pass
+        graph(state)
 
     # Failed to find a path
     print(time() - start_time, 'seconds.')
@@ -103,7 +149,6 @@ def search(graph, state, is_goal, limit, heuristic):
 if __name__ == '__main__':
     with open('Crafting.json') as f:
         Crafting = json.load(f)
-
     # # List of items that can be in your inventory:
     # print('All items:', Crafting['Items'])
     #
@@ -128,8 +173,16 @@ if __name__ == '__main__':
     is_goal = make_goal_checker(Crafting['Goal'])
 
     # Initialize first state from initial inventory
-    state = State({key: 0 for key in Crafting['Items']})
+    state = State({key: 0 for key in Crafting['Items']}) # initialize values to 0
+    state2 = State({key: 3 for key in Crafting['Items']})
     state.update(Crafting['Initial'])
+
+    print(state2.__key__())
+
+    for r in all_recipes:
+        print(r.name)
+        print(r.check(state2.copy()))
+        
 
     # Search for a solution
     resulting_plan = search(graph, state, is_goal, 5, heuristic)
