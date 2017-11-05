@@ -45,29 +45,22 @@ def make_checker(rule):
 
         consumeFailed = False
         requireFailed = False
-
-        print(rule)
         
         if 'Consumes' in rule: # if current rule consumes something
             for ruleItem in rule['Consumes']: # for each item being consumed
-                for stateItem in state.__key__():
-                    if stateItem[0] == ruleItem: # check if the items match
-                        if stateItem[1] >= rule['Consumes'][ruleItem]: # check if we have enough
-                            temp = stateItem[1]
-                            stateItem = (stateItem[0], temp - rule['Consumes'][ruleItem])
-                        else:
-                            consumeFailed = True
-                            break
-                if consumeFailed:
-                    return False
+                if state[ruleItem] >= rule['Consumes'][ruleItem]: # check if we have enough
+                    state[ruleItem] -= rule['Consumes'][ruleItem]
+                else:
+                    consumeFailed = True
+                    break
+            if consumeFailed:
+                return False
 
         if 'Requires' in rule: # if current rule requires something
-            for ruleItem in rule['Requires']: # for each item is required
-                for stateItem in state.__key__():
-                    if stateItem[0] == ruleItem:
-                        if stateItem[1] <= 1:
-                            requireFailed = True
-                            break
+            for ruleItem in rule['Requires']: # for each item required
+                if state[ruleItem] <= 1: # check if we have it
+                    requireFailed = True
+                    break
             if requireFailed:
                 return False
 
@@ -86,17 +79,10 @@ def make_effector(rule):
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
         if 'Consumes' in rule: # if current rule consumes something
             for ruleItem in rule['Consumes']: # for each item being consumed
-                for stateItem in state.__key__():
-                    if stateItem[0] == ruleItem: # check if the items match
-                        temp = stateItem[1]
-                        stateItem = (stateItem[0], temp - rule['Consumes'][ruleItem])
+                state[ruleItem] -= rule['Consumes'][ruleItem]
         
         for ruleItem in rule['Produces']: # for each item being produced
-            for stateItem in state.__key__():
-                if stateItem[0] == ruleItem:
-                    temp = stateItem[1]
-                    stateItem = (stateItem[0], temp + rule['Produces'][ruleItem])
-                    state[stateItem[0]] += stateItem[1]
+            state[ruleItem] += rule['Produces'][ruleItem]
 
         next_state = state.copy()
         return next_state
@@ -111,12 +97,10 @@ def make_goal_checker(goal):
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
         for goalItem in Crafting["Goal"]: # for each item in goal
-            for stateItem in state.__key__(): # for each item in state
-                if goalItem == stateItem[0]: # if current items match
-                    if Crafting["Goal"][goalItem] > state[stateItem[0]]: # if quantity is met
-                        return False
+            if Crafting["Goal"][goalItem] > state[goalItem]: # if quantity is met
+                return False
 
-        return true
+        return True
 
     return is_goal
 
@@ -128,7 +112,6 @@ def graph(state):
 
     for r in all_recipes:
         if r.check(state):
-            # print(r)
             yield (r.name, r.effect(state), r.cost)
 
 
@@ -148,20 +131,20 @@ def search(graph, state, is_goal, limit, heuristic):
     frontier = []
     frontier.append(state.copy())
     came_from = {}
-    came_from[frontier[0]] = True
-    while time() - start_time < limit and not len(frontier) == 0:
+    came_from[frontier[0]] = None
+    while not len(frontier) == 0: # and time() - start_time < limit:
         current = frontier.pop(0)
-        for next in graph(current):
+
+        if is_goal(current):
+            return came_from
+
+        for next in graph(current.copy()):
             if next not in came_from:
                 frontier.append(next[1])
                 came_from[next[1]] = current
-
-        if is_goal(state):
-            came_from
         
     # Failed to find a path
     print(time() - start_time, 'seconds.')
-    print('came_from: ', came_from)
     print("Failed to find a path from", state, 'within time limit.')
     return None
 
