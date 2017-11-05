@@ -1,6 +1,7 @@
 import json
 from collections import namedtuple, defaultdict, OrderedDict
 from timeit import default_timer as time
+from heapq import heappop, heappush
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
@@ -45,6 +46,8 @@ def make_checker(rule):
         consumeFailed = False
         requireFailed = False
 
+        print(rule)
+        
         if 'Consumes' in rule: # if current rule consumes something
             for ruleItem in rule['Consumes']: # for each item being consumed
                 for stateItem in state.__key__():
@@ -93,10 +96,10 @@ def make_effector(rule):
                 if stateItem[0] == ruleItem:
                     temp = stateItem[1]
                     stateItem = (stateItem[0], temp + rule['Produces'][ruleItem])
+                    state[stateItem[0]] += stateItem[1]
 
         next_state = state.copy()
         return next_state
-
 
     return effect
 
@@ -107,11 +110,13 @@ def make_goal_checker(goal):
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
-        for item in Crafting["Goal"]:
-            if item in state.__key__():
-                return True
+        for goalItem in Crafting["Goal"]: # for each item in goal
+            for stateItem in state.__key__(): # for each item in state
+                if goalItem == stateItem[0]: # if current items match
+                    if Crafting["Goal"][goalItem] > state[stateItem[0]]: # if quantity is met
+                        return False
 
-        return False
+        return true
 
     return is_goal
 
@@ -123,6 +128,7 @@ def graph(state):
 
     for r in all_recipes:
         if r.check(state):
+            # print(r)
             yield (r.name, r.effect(state), r.cost)
 
 
@@ -138,11 +144,24 @@ def search(graph, state, is_goal, limit, heuristic):
     # When you find a path to the goal return a list of tuples [(state, action)]
     # representing the path. Each element (tuple) of the list represents a state
     # in the path and the action that took you to this state
-    while time() - start_time < limit:
-        graph(state)
+    
+    frontier = []
+    frontier.append(state.copy())
+    came_from = {}
+    came_from[frontier[0]] = True
+    while time() - start_time < limit and not len(frontier) == 0:
+        current = frontier.pop(0)
+        for next in graph(current):
+            if next not in came_from:
+                frontier.append(next[1])
+                came_from[next[1]] = current
 
+        if is_goal(state):
+            came_from
+        
     # Failed to find a path
     print(time() - start_time, 'seconds.')
+    print('came_from: ', came_from)
     print("Failed to find a path from", state, 'within time limit.')
     return None
 
@@ -150,14 +169,14 @@ if __name__ == '__main__':
     with open('Crafting.json') as f:
         Crafting = json.load(f)
     # # List of items that can be in your inventory:
-    # print('All items:', Crafting['Items'])
-    #
+    print('All items:', Crafting['Items'])
+
     # # List of items in your initial inventory with amounts:
-    # print('Initial inventory:', Crafting['Initial'])
-    #
+    print('Initial inventory:', Crafting['Initial'])
+
     # # List of items needed to be in your inventory at the end of the plan:
-    # print('Goal:',Crafting['Goal'])
-    #
+    print('Goal:',Crafting['Goal'])
+
     # # Dict of crafting recipes (each is a dict):
     # print('Example recipe:','craft stone_pickaxe at bench ->',Crafting['Recipes']['craft stone_pickaxe at bench'])
 
@@ -174,14 +193,14 @@ if __name__ == '__main__':
 
     # Initialize first state from initial inventory
     state = State({key: 0 for key in Crafting['Items']}) # initialize values to 0
-    state2 = State({key: 3 for key in Crafting['Items']})
+    # state2 = State({key: 3 for key in Crafting['Items']})
     state.update(Crafting['Initial'])
 
-    print(state2.__key__())
+    # print(state2.__key__())
 
-    for r in all_recipes:
-        print(r.name)
-        print(r.check(state2.copy()))
+    # for r in all_recipes:
+    #     print(r.name)
+    #     print(r.check(state2.copy()))
         
 
     # Search for a solution

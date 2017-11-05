@@ -1,0 +1,44 @@
+State: Items in inventory
+Actions: Craft a recipe
+What is adjacency?
+Path: Sequence of recipe uses
+Path cost: #steps, Time
+Heuristic: Up to us
+
+- Probably best to work backwards
+
+(state) 2 wood
+Can make Torch with 1 wood
+(state) 2 wood -> (action) make torch -> (state) 1 wood
+ ^                                        ^
+ |                                        |
+
+Path is the actions (edges) you take from each state (node)
+
+Crafting['Items'] Items is a list
+Crafting['Recipes'] Recipe is a 3-layer dictionary
+
+"Recipes" : { "craft wooden_pickaxe at bench": {"Produces": {"wooden_pickaxe": 1},
+                                               {"Requires": {"bench": true},
+                                               {"Consumes": {"plank": 3, "stick": 2},
+                                               {"Time": 1}
+                                               
+rule["Produces"]["wooden_pickaxe"]
+
+
+wtf is "__lt__"?
+- Less than
+
+how do we get a specific item from state.__key__?
+- state.__key__()[0][0] to get value
+- state.items() for odict, probably not used
+- state['key'] += 1
+
+how do we get the name of the rule in checker?
+- Just access rule, it's already passed in
+
+state = state2 != state = state2.copy()
+state2++ also     state2++ does
+does state++      not do state++
+
+MAKE COPY OF STATE BEFORE DOING CHECK, OR DECREMENT AFFECTS ORIGINAL STATE
