@@ -42,10 +42,12 @@ def make_checker(rule):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
         
+        """
         if 'Requires' in rule:
             for ruleItem in rule['Requires']:
                 if state[ruleItem] == 0:
                     return False
+        """
         
         # check if the item being produced is in the goal
         for ruleItem in rule['Produces']:
@@ -111,7 +113,7 @@ def graph(state):
 
     for r in all_recipes:
         if r.check(state):
-            yield (r.name, r.effect(state), r.cost)
+            yield (r.name, r.effect(state.copy()), r.cost)
 
 def heuristic(state):
     # Implement your heuristic here!
@@ -128,22 +130,22 @@ def search(graph, state, is_goal, limit, heuristic):
     
     start = state.copy()
     frontier = []
-    frontier.append(start)
+    heappush(frontier, (start, 0))
     path = [(start,None)]
     came_from = {}
     came_from[start] = None
     while not len(frontier) == 0 and time() - start_time < limit:
-        current = frontier.pop() # 0
-        print('CURR',current)
+        print("Hi", frontier)
+        current = heappop(frontier)
         
-        if is_goal(current):
+        if is_goal(current[0]):
             print('reached goal',current)
             break
                
-        for next in graph(current.copy()): #.copy() DO COPY
+        for next in graph(current[0].copy()): #.copy() DO COPY
+            print('NEXT: ', next)
             if next[1] not in came_from: #next FIX
-                frontier.append(next[1])
-                #path.append((next[1],next[0]))
+                heappush(frontier, (next[1], next[2] + current[1]))
                 path.append((next[1],next[0]))
                 print('did action: ' , next[0])
                 came_from[next[1]] = current
