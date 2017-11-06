@@ -5,8 +5,6 @@ from heapq import heappop, heappush
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
-BENCHED = False
-
 class State(OrderedDict):
     """ This class is a thin wrapper around an OrderedDict, which is simply a dictionary which keeps the order in
         which elements are added (for consistent key-value pair comparisons). Here, we have provided functionality
@@ -31,11 +29,8 @@ class State(OrderedDict):
         new_state.update(self)
         return new_state
 
-    def __str__(self):
-        temp = self.copy()
-        for item in temp.items():
-            print(temp[item])
-        return str(dict(item for item in self.items() if abs(item[1]) > 0))
+    def __str__(self, initial=[]):
+        return str(dict(item for item in self.items() if item[1] > 0))
 
 def make_checker(rule):
     # Implement a function that returns a function to determine whether a state meets a
@@ -45,18 +40,6 @@ def make_checker(rule):
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
-                
-        global BENCHED
-        '''
-        if 'Requires' in rule:
-            for ruleItem in rule['Requires']:
-                if ruleItem == 'bench' and not BENCHED:
-                    BENCHED = True
-                    state[ruleItem] += 1
-                    #print('GIVE AX')
-                elif state[ruleItem] == 0:
-                    return False
-        '''
         
         # check if the item being produced is in the goal
         for ruleItem in rule['Produces']:
@@ -108,13 +91,9 @@ def make_goal_checker(goal):
             if item in state:
                 
                 for index in range(len(goal)):
-                    #print(state[item] , '=?' , goal[index][0])
                     if item == goal[index][0]:
-                        #print('reeee: ', item , '==', goal[index][0])
-                        if state[item] > goal[index][1]: #Crafting['Initial']: # if we have more than 0 of any item, we not at 'Init' so return False
-                            #print('goal: ',goal)
+                        if state[item] > goal[index][1]:
                             print('We have too much ',item, ' ',state[item],' > ',goal[index])
-                            #print("GGGGoal not reached because you have: " , item,': ',state[item])
                             lock = True
                             #return False
                     
@@ -157,13 +136,10 @@ def search(graph, state, is_goal, limit, heuristic):
     start = state.copy()
     frontier = []
     heappush(frontier, (start, 0))
-    #path2 = [(start.__str__(),None)] 
     came_from = {}
     came_from[(start.__hash__())] = (None,None,None) #name, effect, cost # FIX?
     
     while not len(frontier) == 0 and time() - start_time < limit:
-        #while time() - start_time < limit:
-        #print(time() - start_time,' < ', limit)
         current = heappop(frontier)
         
         if is_goal(current[0]):
@@ -174,57 +150,36 @@ def search(graph, state, is_goal, limit, heuristic):
             #print('NEXT: ', next)
             if next[1] not in came_from: #next FIX
                 heappush(frontier, (next[1], next[2] + current[1]))
-                #print("CURREN~1 ",current[1])
-                #print("next[2] ",next[2])
-                #path2.append((next[1].__str__(),next[0]))
-                #print('did action: ' , next[0])
                 came_from[next[1].__hash__()] = (current[0].__hash__(), next[0], current)
                 
     if time() - start_time >= limit:
         print(time() - start_time, 'seconds.')
         print("Failed to find a path from", state, 'within time limit.')
-        return None    
-    #print('PATH: ',path)
-    #current = Crafting['Initial']
-    #print('\nSOMETHING ELSE THAR',came_from)
-    print("total priority cost ",current[1])
+        return None
+
+    print("total priority cost ", current[1])
     cost = current[1]
     #current = State({key: 0 for key in Crafting['Items']})
-    path = [(current[0].__str__(),None)]
-    print('current.__str__()',current[0].__str__())
-    print('current',current)
-    #current = current[0].__hash__()
-    #print('current not in loop',current)
-    #name = current.__str__()
-    
-    #print('\n\nnameeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',name)
+    path = [(Crafting["Initial"],None)]
     current = current[0].__hash__()
     name = came_from[current][1]
     sta = came_from[current][2][0]
-    #print('\n\nnameeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',name)
-    #print('\n\staeeeeesssssssssssseeeeeeeeeeee',sta)
-    #print('\n\ststartstartstartstartstartstartstartstart',start)
-    while sta != start and time() - start_time < limit:
-        #print('PAAAAAAAAAAAAAAAAAAATH',path)
-        #print('came_from[current]',came_from[current][0])
-        #path.append((current.__str__(),came_from[current]))
-        #print('sta.__str__()',sta.__str__())
-        #print('start',start)
-        path.append((sta.__str__(),name))
+
+    while sta != start:
+
+        temp = sta.copy()
+        for item in Crafting["Initial"]:
+            temp[item] += Crafting["Initial"][item]
+        path.append((temp.__str__(),name))
         current = came_from[current][0]
-        #print('NAMAAMAMAMMAMAMAMAMAMAMcame_from[current] ', came_from[current])
-        #if(came_from[current 
-            #name = came_from[current][1]
-        #print('came_from[current]',came_from[current])
         if current != None:
             if came_from[current] != (None,None):
-        
                 name = came_from[current][1]
                 sta = came_from[current][2][0]
             else:
                 name = None
                 sta = None
-        #print('PAAAAAAAAAAAAAAAAAAATH',path)
+
     print('\n\start and sta: ',start, ' , ',sta)
     print('\nFound path in ', time() - start_time, ' seconds')
     print('cost: ', cost, ' Len: ' , actionLen)
@@ -236,7 +191,6 @@ def search(graph, state, is_goal, limit, heuristic):
 if __name__ == '__main__':
     with open('Crafting.json') as f:
         Crafting = json.load(f)
-    #print('Goal:',Crafting['Goal'])
 
     # Build rules
     all_recipes = []
@@ -250,7 +204,6 @@ if __name__ == '__main__':
     #is_goal = make_goal_checker(Crafting['Goal'])
     goalState = {}
     goalState = State({key: 0 for key in Crafting['Items']}) # initialize values to 0
-    #print('GOALSTATE: ',goalState.__key__())
     goalState.update(Crafting['Initial'])
     print('GOALSTATE: ',goalState) #.__key__()
     is_goal = make_goal_checker(goalState.__key__()) #(Crafting['Initial'])
