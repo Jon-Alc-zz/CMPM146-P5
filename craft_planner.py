@@ -42,28 +42,13 @@ def make_checker(rule):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
         
-        # check if the item being produced is in the goal
-        '''
-        for ruleItem in rule['Produces']:
-            for stateItem in state.__key__():
-                print(stateItem[0], ' ==? ', ruleItem)
-                if stateItem[0] == ruleItem:
-                    print("SSSOSOSO, THEY ARE THE SAME THING")
-                    print(stateItem[1])
-                    temp = stateItem[1]
-                    #stateItem = (stateItem[0], temp - rule['Produces'][ruleItem]) # put this in effect????
-                    print('stateItem',stateItem)
-        '''
         if 'Requires' in rule:
             for ruleItem in rule['Requires']:
                 if state[ruleItem] == 0:
                     return False
-                    print('henlo')
         
-        
+        # check if the item being produced is in the goal
         for ruleItem in rule['Produces']:
-            #print('joj',ruleItem, state[ruleItem])
-            #for stateItem in state.__key__():
             if state[ruleItem] > 0:
                 print(state[ruleItem], ' > 0 ')
                 return True
@@ -148,7 +133,7 @@ def search(graph, state, is_goal, limit, heuristic):
     came_from = {}
     came_from[start] = None
     while not len(frontier) == 0 and time() - start_time < limit:
-        current = frontier.pop() #0
+        current = frontier.pop() # 0
         print('CURR',current)
         
         if is_goal(current):
@@ -187,9 +172,6 @@ if __name__ == '__main__':
 
     # Initialize first state from initial inventory
     state = State({key: 0 for key in Crafting['Items']}) # initialize values to 0
-    #state = State(Crafting['Goal'])
-    
-    
     state.update(Crafting['Goal'])
     print('STARTING AT:',state)
 
