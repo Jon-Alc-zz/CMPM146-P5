@@ -33,7 +33,6 @@ class State(OrderedDict):
     def __str__(self):
         return str(dict(item for item in self.items() if item[1] > 0))
 
-
 def make_checker(rule):
     # Implement a function that returns a function to determine whether a state meets a
     # rule's requirements. This code runs once, when the rules are constructed before
@@ -42,33 +41,37 @@ def make_checker(rule):
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
-
-        consumeFailed = False
-        requireFailed = False
         
-        if 'Consumes' in rule: # if current rule consumes something
-            for ruleItem in rule['Consumes']: # for each item being consumed
-                if state[ruleItem] >= rule['Consumes'][ruleItem]: # check if we have enough
-                    state[ruleItem] -= rule['Consumes'][ruleItem]
-                else:
-                    consumeFailed = True
-                    break
-            if consumeFailed:
-                return False
-
-        if 'Requires' in rule: # if current rule requires something
-            for ruleItem in rule['Requires']: # for each item required
-                if state[ruleItem] <= 1: # check if we have it
-                    requireFailed = True
-                    break
-            if requireFailed:
-                return False
-
-        return True
+        # check if the item being produced is in the goal
+        '''
+        for ruleItem in rule['Produces']:
+            for stateItem in state.__key__():
+                print(stateItem[0], ' ==? ', ruleItem)
+                if stateItem[0] == ruleItem:
+                    print("SSSOSOSO, THEY ARE THE SAME THING")
+                    print(stateItem[1])
+                    temp = stateItem[1]
+                    #stateItem = (stateItem[0], temp - rule['Produces'][ruleItem]) # put this in effect????
+                    print('stateItem',stateItem)
+        '''
+        if 'Requires' in rule:
+            for ruleItem in rule['Requires']:
+                if state[ruleItem] == 0:
+                    return False
+                    print('henlo')
+        
+        
+        for ruleItem in rule['Produces']:
+            #print('joj',ruleItem, state[ruleItem])
+            #for stateItem in state.__key__():
+            if state[ruleItem] > 0:
+                print(state[ruleItem], ' > 0 ')
+                return True
+        
+        return False
 
     return check
-
-
+    
 def make_effector(rule):
     # Implement a function that returns a function which transitions from state to
     # new_state given the rule. This code runs once, when the rules are constructed
@@ -77,33 +80,44 @@ def make_effector(rule):
     def effect(state):
         # This code is called by graph(state) and runs millions of times
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
+        
+        if 'Produces' in rule: # if current rule consumes something
+            for ruleItem in rule['Produces']: # for each item being consumed
+                state[ruleItem] -= rule['Produces'][ruleItem] 
+                            
         if 'Consumes' in rule: # if current rule consumes something
             for ruleItem in rule['Consumes']: # for each item being consumed
-                state[ruleItem] -= rule['Consumes'][ruleItem]
+                state[ruleItem] += rule['Consumes'][ruleItem]                
         
-        for ruleItem in rule['Produces']: # for each item being produced
-            state[ruleItem] += rule['Produces'][ruleItem]
-
+        if 'Requires' in rule:
+            for ruleItem in rule['Requires']:
+                state[ruleItem] += 1
+        
         next_state = state.copy()
         return next_state
 
-    return effect
-
+    return effect    
 
 def make_goal_checker(goal):
     # Implement a function that returns a function which checks if the state has
     # met the goal criteria. This code runs once, before the search is attempted.
 
     def is_goal(state):
+        lock = False # made this so we can print out ALL the things we have too much of
         # This code is used in the search process and may be called millions of times.
-        for goalItem in Crafting["Goal"]: # for each item in goal
-            if Crafting["Goal"][goalItem] > state[goalItem]: # if quantity is met
-                return False
-
-        return True
+        #for initItem in Crafting['Initial']: # for each item in Initial
+        for item in Crafting['Items']: # for every item
+            if item in state:
+                if state[item] > 0: # if we have more than 0 of any item, we not at 'Init' so return False   
+                    #print("GGGGoal not reached because you have: " , item,': ',state[item])
+                    lock = True
+                    #return False
+                    
+        if not lock:
+            print("hi, you now have nothing!")
+            return True
 
     return is_goal
-
 
 def graph(state):
     # Iterates through all recipes/rules, checking which are valid in the given state.
@@ -113,7 +127,6 @@ def graph(state):
     for r in all_recipes:
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
-
 
 def heuristic(state):
     # Implement your heuristic here!
@@ -128,22 +141,29 @@ def search(graph, state, is_goal, limit, heuristic):
     # representing the path. Each element (tuple) of the list represents a state
     # in the path and the action that took you to this state
     
+    start = state.copy()
     frontier = []
-    frontier.append(state.copy())
+    frontier.append(start)
+    path = [(start,None)]
     came_from = {}
-    came_from[frontier[0]] = None
-    while not len(frontier) == 0: # and time() - start_time < limit:
-        current = frontier.pop(0)
-
-        if is_goal(current):
-            return came_from
-
-        for next in graph(current.copy()):
-            if next not in came_from:
-                frontier.append(next[1])
-                came_from[next[1]] = current
+    came_from[start] = None
+    while not len(frontier) == 0 and time() - start_time < limit:
+        current = frontier.pop() #0
+        print('CURR',current)
         
-    # Failed to find a path
+        if is_goal(current):
+            print('reached goal',current)
+            break
+               
+        for next in graph(current.copy()): #.copy() DO COPY
+            if next[1] not in came_from: #next FIX
+                frontier.append(next[1])
+                #path.append((next[1],next[0]))
+                path.append((next[1],next[0]))
+                print('did action: ' , next[0])
+                came_from[next[1]] = current
+    #print('PATH: ',path)
+    return path
     print(time() - start_time, 'seconds.')
     print("Failed to find a path from", state, 'within time limit.')
     return None
@@ -151,17 +171,7 @@ def search(graph, state, is_goal, limit, heuristic):
 if __name__ == '__main__':
     with open('Crafting.json') as f:
         Crafting = json.load(f)
-    # # List of items that can be in your inventory:
-    print('All items:', Crafting['Items'])
-
-    # # List of items in your initial inventory with amounts:
-    print('Initial inventory:', Crafting['Initial'])
-
-    # # List of items needed to be in your inventory at the end of the plan:
-    print('Goal:',Crafting['Goal'])
-
-    # # Dict of crafting recipes (each is a dict):
-    # print('Example recipe:','craft stone_pickaxe at bench ->',Crafting['Recipes']['craft stone_pickaxe at bench'])
+    #print('Goal:',Crafting['Goal'])
 
     # Build rules
     all_recipes = []
@@ -172,19 +182,16 @@ if __name__ == '__main__':
         all_recipes.append(recipe)
 
     # Create a function which checks for the goal
-    is_goal = make_goal_checker(Crafting['Goal'])
+    #is_goal = make_goal_checker(Crafting['Goal'])
+    is_goal = make_goal_checker(Crafting['Initial'])
 
     # Initialize first state from initial inventory
     state = State({key: 0 for key in Crafting['Items']}) # initialize values to 0
-    # state2 = State({key: 3 for key in Crafting['Items']})
-    state.update(Crafting['Initial'])
-
-    # print(state2.__key__())
-
-    # for r in all_recipes:
-    #     print(r.name)
-    #     print(r.check(state2.copy()))
-        
+    #state = State(Crafting['Goal'])
+    
+    
+    state.update(Crafting['Goal'])
+    print('STARTING AT:',state)
 
     # Search for a solution
     resulting_plan = search(graph, state, is_goal, 5, heuristic)
@@ -192,5 +199,24 @@ if __name__ == '__main__':
     if resulting_plan:
         # Print resulting plan
         for state, action in resulting_plan:
-            print('\t',state)
-            print(action)
+            print('\t',state, action)
+            #print(action)
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
