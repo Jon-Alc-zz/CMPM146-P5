@@ -93,12 +93,12 @@ def make_goal_checker(goal):
                 for index in range(len(goal)):
                     if item == goal[index][0]:
                         if state[item] > goal[index][1]:
-                            print('We have too much ',item, ' ',state[item],' > ',goal[index])
+                            #print('We have too much ',item, ' ',state[item],' > ',goal[index])
                             lock = True
                             #return False
                     
         if not lock:
-            print("Hi, you now have reached the goal!")
+            #print("Hi, you now have reached the goal!")
             return True
 
     return is_goal
@@ -114,13 +114,16 @@ def graph(state):
 
 def heuristic(state):
     # Implement your heuristic here!
-    return 0
+    value = 0
+    
+    
+    
+    
+    return value
 
 def search(graph, state, is_goal, limit, heuristic):
 
     start_time = time()
-    print('state ', state)
-    
     
     # Implement your search here! Use your heuristic here!
     # When you find a path to the goal return a list of tuples [(state, action)]
@@ -135,21 +138,30 @@ def search(graph, state, is_goal, limit, heuristic):
     
     start = state.copy()
     frontier = []
+    #heappush(frontier, (start, 0))
     heappush(frontier, (start, 0))
     came_from = {}
-    came_from[(start.__hash__())] = (None,None,None) #name, effect, cost # FIX?
+    came_from[(start.__hash__())] = (None,None,None) 
+    cost_so_far = {}
+    cost_so_far[start] = 0
     
     while not len(frontier) == 0 and time() - start_time < limit:
         current = heappop(frontier)
-        
+        #print('priority?', current[1])
         if is_goal(current[0]):
-            print('reached goal',current)
+            #print('reached goal',current)
             break
                
         for next in graph(current[0].copy()): #.copy() DO COPY
-            #print('NEXT: ', next)
-            if next[1] not in came_from: #next FIX
-                heappush(frontier, (next[1], next[2] + current[1]))
+            #print('cost_so_far[current[0].copy(): ', cost_so_far[current[0]])
+            new_cost = cost_so_far[current[0]] + next[2]
+            #if next[1] not in came_from: #next FIX
+            if next[1] not in cost_so_far.keys() or new_cost < cost_so_far[next[1]]:
+                cost_so_far[next[1]] = new_cost
+                priority = new_cost + heuristic(next[1])
+                print('priority ', priority)
+                #heappush(frontier, (next[1], next[2] + current[1]))
+                heappush(frontier, (next[1], priority))
                 came_from[next[1].__hash__()] = (current[0].__hash__(), next[0], current)
                 
     if time() - start_time >= limit:
@@ -157,9 +169,10 @@ def search(graph, state, is_goal, limit, heuristic):
         print("Failed to find a path from", state, 'within time limit.')
         return None
 
-    print("total priority cost ", current[1])
+    #print("total priority cost ", current[1])
     cost = current[1]
     #current = State({key: 0 for key in Crafting['Items']})
+    actionLen += 1
     path = [(Crafting["Initial"],None)]
     current = current[0].__hash__()
     name = came_from[current][1]
@@ -170,6 +183,7 @@ def search(graph, state, is_goal, limit, heuristic):
         temp = sta.copy()
         for item in Crafting["Initial"]:
             temp[item] += Crafting["Initial"][item]
+        actionLen += 1
         path.append((temp.__str__(),name))
         current = came_from[current][0]
         if current != None:
@@ -180,9 +194,10 @@ def search(graph, state, is_goal, limit, heuristic):
                 name = None
                 sta = None
 
-    print('\n\start and sta: ',start, ' , ',sta)
+    #print('\n\start and sta: ',start, ' , ',sta)
     print('\nFound path in ', time() - start_time, ' seconds')
     print('cost: ', cost, ' Len: ' , actionLen)
+    actionLen += 1
     path.append((start,came_from[current][1])) # 'Goal' appended
     
     #print("Found Path")
@@ -218,7 +233,7 @@ if __name__ == '__main__':
     print('STARTING AT:',state)
    
     # Search for a solution
-    resulting_plan = search(graph, state, is_goal, 30, heuristic)
+    resulting_plan = search(graph, state, is_goal, 120, heuristic)
 
     if resulting_plan:
         # Print resulting plan
